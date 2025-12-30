@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIG-TECH Studio v8.0 (Optimized)</title>
+    <style>
+        /* --- CSS Styling --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; background-color: #121212; color: #eee;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+
+        /* Toolbar */
+        #toolbar {
+            background-color: #1f1f1f; padding: 8px 12px; display: flex; gap: 8px;
+            align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 1000;
+            flex-wrap: wrap; border-bottom: 1px solid #333;
+        }
+
+        .toolbar-group {
+            display: flex; gap: 5px; align-items: center; background: #2b2b2b;
+            padding: 4px 8px; border-radius: 6px; border: 1px solid #333;
+        }
+
+        .divider { width: 1px; height: 25px; background: #444; margin: 0 2px; }
+
+        h3 { margin: 0 10px 0 0; font-size: 1.1rem; color: #00e5ff; font-weight: bold; cursor: default; }
+
+        button, select, .btn-label {
+            padding: 6px 10px; cursor: pointer; border: 1px solid #444;
+            background: #3a3a3a; color: #ddd; border-radius: 4px;
+            font-size: 0.8rem; transition: 0.2s; white-space: nowrap;
+        }
+        button:hover, select:hover, .btn-label:hover { background-color: #505050; }
+
+        .btn-primary { background-color: #007bff; border: none; color: white; }
+        .btn-success { background-color: #28a745; border: none; color: white; font-weight: bold;}
+        .btn-danger { background-color: #dc3545; border: none; color: white; } 
+        .btn-save { background-color: #6f42c1; border: none; color: white; }
+        .btn-open { background-color: #e83e8c; border: none; color: white; }
+        .btn-help { background-color: #ff9800; border: none; color: #000; font-weight: bold; border-radius: 50%; width: 30px; height: 30px; padding: 0; display:flex; justify-content:center; align-items:center;}
+
+        input[type="file"] { display: none; }
+        input[type="color"] { border: none; width: 25px; height: 25px; cursor: pointer; background: none; padding: 0; }
+
+        /* Workspace */
+        #workspace-container {
+            flex-grow: 1; display: flex; justify-content: center; align-items: center;
+            overflow: auto; padding: 50px; background-color: #000; position: relative;
+        }
+
+        #workspace {
+            position: relative; background-color: #ffffff;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5); overflow: hidden;
+            width: 800px; height: 450px; transition: width 0.3s, height 0.3s, background 0.3s;
+        }
+
+        .transparent-mode {
+            background-color: transparent !important; background-image: none !important;
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                              linear-gradient(-45deg, transparent 75%, #ccc 75%) !important;
+            background-size: 20px 20px !important;
+        }
+
+        /* Draggable Elements */
+        .element-container {
+            position: absolute; cursor: grab; user-select: none; touch-action: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+        
+        .element-container img { width: 100%; height: 100%; display: block; pointer-events: none; }
+        
+        .element-container span { 
+            white-space: nowrap; pointer-events: none; line-height: 1;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .element-container.active { outline: 2px solid #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.4); }
+        .element-container.locked { outline: 2px dashed #ff4444 !important; cursor: not-allowed; }
+
+        .resize-handle {
+            position: absolute; bottom: -6px; right: -6px; width: 12px; height: 12px;
+            background-color: #00e5ff; border: 2px solid #fff; cursor: se-resize;
+            border-radius: 50%; display: none; z-index: 10000;
+        }
+        .element-container.active .resize-handle { display: block; }
+        .element-container.locked .resize-handle { display: none !important; }
+
+        /* Context Menu (Floating Menu over Image) - UPDATED */
+        #context-menu {
+            position: absolute; display: none; background: #333; padding: 6px;
+            border-radius: 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); z-index: 99999; 
+            gap: 6px; align-items: center; border: 1px solid #444;
+        }
+        #context-menu button { 
+            border: 1px solid #555; background: #444; color: white; padding: 6px 10px; font-size: 0.85rem; 
+        }
+        #context-menu button:hover { background: #555; border-color: #666; }
+        #context-menu button.delete-btn { background: #dc3545; border: none; }
+        #context-menu button.delete-btn:hover { background: #c82333; }
+        .menu-divider { width: 1px; height: 24px; background: #555; }
+
+
+        /* Modals & Loading */
+        #text-modal, #help-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #222; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px;
+            border: 1px solid #444; color: #eee;
+        }
+        .modal-content h2 { margin-top: 0; color: #00e5ff; }
+        .modal-content input, .modal-content select {
+            width: 100%; padding: 10px; margin: 10px 0; background: #333; border: 1px solid #555; color: white;
+        }
+        .help-list li { margin-bottom: 8px; color: #ccc; font-size: 0.9rem; }
+
+        #loading {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 4000; color: white;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner {
+            border: 4px solid #333; border-top: 4px solid #00e5ff;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 0.8s linear infinite; margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="toolbar">
+        <h3>VIG-TECH v8</h3>
+        
+        <div class="toolbar-group">
+            <button class="btn-save" onclick="saveProjectToFile()" title="Save Project File">💾 Save</button>
+            <label class="btn-label btn-open" title="Open Project File">
+                📂 Open
+                <input type="file" id="projectInput" accept=".vig" onchange="loadProjectFromFile(this)">
+            </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="toolbar-group">
+            <label class="btn-label btn-primary" title="Add Images">
+                + Image
+                <input type="file" id="imageInput" accept="image/*" multiple>
+            </label>
+            <button class="btn-primary" onclick="openTextModal()" title="Add Text">+ Text</button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="btn-danger" onclick="clearAll()" title="Reset Canvas">🗑 Clear All</button>
+        </div>
+
+        <div class="toolbar-group">
+            <select id="ratioSelect" onchange="setAspectRatio(this.value)">
+                 <option value="16:9" selected>16:9 (YouTube)</option>
+                 <option value="1:1">1:1 (Square)</option>
+                 <option value="9:16">9:16 (Story)</option>
+                 <option value="4:3">4:3 (Standard)</option>
+                 <option value="3:4">3:4 (Portrait)</option>
+                 <option value="free">Free Screen</option>
+            </select>
+        </div>
+
+        <div class="toolbar-group" title="Background Settings">
+            <span style="font-size:0.8rem; color:#aaa">BG:</span>
+            <input type="color" id="bgCol1" value="#ffffff" title="Color 1">
+            <input type="color" id="bgCol2" value="#ffffff" title="Color 2 (For Gradient)">
+            <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 5px; margin-left:5px; cursor: pointer;">
+                <input type="checkbox" id="gradientCheck" onchange="updateBackground()"> Mix
+            </label>
+            <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 5px; margin-left:5px; cursor: pointer;">
+                <input type="checkbox" id="transparentCheck" onchange="updateBackground()"> No BG
+            </label>
+        </div>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <button class="btn-success" onclick="downloadHDCollage()" title="Export High Quality Image">Download HD</button>
+        <button class="btn-help" onclick="toggleHelp()" title="Help / Documentation">?</button>
+    </div>
+
+    <div id="context-menu">
+        <button onclick="changeLayer('up')" title="Bring to Front">↑ Front</button>
+        <button onclick="changeLayer('down')" title="Send to Back">↓ Back</button>
+        <div class="menu-divider"></div>
+        <button id="lockBtn" onclick="toggleLock()" title="Lock Position">🔒 Lock</button>
+        <button class="delete-btn" onclick="deleteSelected()" title="Delete Item">🗑 Delete</button>
+    </div>
+
+    <div id="text-modal">
+        <div class="modal-content">
+            <h2>Add Text</h2>
+            <input type="text" id="newTextInput" placeholder="Type here...">
+            <div style="display:flex; gap:10px;">
+                <input type="color" id="textColor" value="#ffffff" style="width:50px">
+                <select id="textFont">
+                    <option value="Arial">Arial</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Comic Sans MS">Comic Sans</option>
+                    <option value="cursive">Cursive</option>
+                </select>
+            </div>
+            <div style="margin-top:15px; text-align:right;">
+                <button class="btn-danger" onclick="document.getElementById('text-modal').style.display='none'">Cancel</button>
+                <button class="btn-success" onclick="addText()">Add Text</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="help-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>Documentation</h2>
+                <button onclick="toggleHelp()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <p><b>VIG-TECH Studio Guide v8:</b></p>
+            <ul class="help-list">
+                <li><b>Quick Edit Menu:</b> Click any image/text to see options right above it: <b>Front, Back, Lock, Delete</b>.</li>
+                <li><b>Save/Open:</b> Use 💾 Save to keep your project file (.vig). Open it later to continue.</li>
+                <li><b>Add & Resize:</b> Use +Image/+Text. Drag the bottom-right blue handle to resize.</li>
+                <li><b>Background:</b> Use Color Pickers. Check "Mix" for Gradient. Check "No BG" for Transparent.</li>
+                <li><b>Clear All:</b> The Red Trash button in toolbar deletes everything.</li>
+            </ul>
+            <button class="btn-primary" style="width:100%" onclick="toggleHelp()">Close</button>
+        </div>
+    </div>
+
+    <div id="workspace-container">
+        <div id="workspace"></div>
+    </div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">Processing...</div>
+    </div>
+
+    <script>
+        const workspace = document.getElementById('workspace');
+        const workspaceContainer = document.getElementById('workspace-container');
+        const contextMenu = document.getElementById('context-menu');
+        
+        // BG Controls
+        const bgCol1 = document.getElementById('bgCol1');
+        const bgCol2 = document.getElementById('bgCol2');
+        const gradientCheck = document.getElementById('gradientCheck');
+        const transparentCheck = document.getElementById('transparentCheck');
+
+        let selectedElement = null;
+        let elementsData = []; 
+
+        // --- Init ---
+        window.onload = function() {
+            setAspectRatio('16:9'); // Default
+            updateBackground();
+        };
+
+        // --- Ratios ---
+        function setAspectRatio(ratio) {
+            let width, height;
+            const baseSize = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.75, 800); 
+            switch(ratio) {
+                case '1:1': width = baseSize; height = baseSize; break;
+                case '16:9': width = baseSize; height = baseSize * (9/16); break;
+                case '9:16': height = baseSize; width = baseSize * (9/16); break;
+                case '4:3': width = baseSize; height = baseSize * (3/4); break;
+                case '3:4': height = baseSize; width = baseSize * (3/4); break;
+                case 'free': width = 800; height = 600; break;
+                default: width = 800; height = 450;
+            }
+            workspace.style.width = width + 'px';
+            workspace.style.height = height + 'px';
+        }
+
+        // --- Clear All ---
+        function clearAll() {
+            if(confirm("Are you sure you want to clear the entire canvas? Unsaved work will be lost.")) {
+                elementsData = [];
+                workspace.innerHTML = '';
+                deselectAll();
+            }
+        }
+
+        // --- Help & Modals ---
+        function toggleHelp() {
+            const m = document.getElementById('help-modal');
+            m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function openTextModal() {
+            document.getElementById('text-modal').style.display = 'flex';
+            document.getElementById('newTextInput').focus();
+        }
+
+        // --- Core Functions ---
+        function updateBackground() {
+            if (transparentCheck.checked) {
+                workspace.classList.add('transparent-mode');
+                workspace.style.background = 'transparent';
+            } else {
+                workspace.classList.remove('transparent-mode');
+                if (gradientCheck.checked) {
+                    workspace.style.background = `linear-gradient(135deg, ${bgCol1.value}, ${bgCol2.value})`;
+                } else {
+                    workspace.style.background = bgCol1.value;
+                }
+            }
+        }
+
+        // --- Adding Elements ---
+        // 1. Add Image
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = function() {
+                            const maxSize = 250;
+                            let w = img.width, h = img.height;
+                            if (w > h && w > maxSize) { h *= maxSize/w; w = maxSize; }
+                            else if (h > maxSize) { w *= maxSize/h; h = maxSize; }
+
+                            addElement({
+                                type: 'image',
+                                src: event.target.result,
+                                w: w, h: h, ratio: img.width/img.height
+                            });
+                        }
+                    }
+                    reader.readAsDataURL(file);
+                });
+            }
+            this.value = '';
+        });
+
+       // 2. Add Text
+        function addText() {
+            const text = document.getElementById('newTextInput').value;
+            const color = document.getElementById('textColor').value;
+            const font = document.getElementById('textFont').value;
+            
+            if(!text.trim()) return;
+
+            addElement({
+                type: 'text',
+                text: text,
+                color: color,
+                font: font,
+                w: 0, h: 0 
+            });
+
+            document.getElementById('text-modal').style.display = 'none';
+            document.getElementById('newTextInput').value = '';
+        }
+
+        function addElement(props) {
+            let maxZ = 0;
+            elementsData.forEach(el => maxZ = Math.max(maxZ, el.z));
+
+            const newEl = {
+                id: 'el_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                type: props.type,
+                x: 50 + (Math.random() * 20),
+                y: 50 + (Math.random() * 20),
+                z: maxZ + 1,
+                locked: false,
+                ...props 
+            };
+
+            if(newEl.type === 'text') {
+                newEl.fontSize = 40; 
+                newEl.w = newEl.text.length * 20; 
+                newEl.h = 50; 
+            }
+
+            elementsData.push(newEl);
+            renderElement(newEl);
+        }
+
+        function renderElement(data) {
+            const container = document.createElement('div');
+            container.classList.add('element-container');
+            container.id = data.id;
+            
+            container.style.left = data.x + 'px';
+            container.style.top = data.y + 'px';
+            container.style.zIndex = data.z;
+
+            if (data.type === 'image') {
+                container.style.width = data.width ? data.width + 'px' : data.w + 'px';
+                container.style.height = data.height ? data.height + 'px' : data.h + 'px';
+                const img = document.createElement('img');
+                img.src = data.src;
+                container.appendChild(img);
+                container.dataset.ratio = data.ratio;
+            } 
+            else if (data.type === 'text') {
+                const span = document.createElement('span');
+                span.innerText = data.text;
+                span.style.color = data.color;
+                span.style.fontFamily = data.font;
+                span.style.fontSize = data.fontSize + 'px';
+                container.appendChild(span);
+                
+                container.style.width = 'auto';
+                container.style.height = 'auto';
+            }
+
+            if(data.locked) container.classList.add('locked');
+
+            const handle = document.createElement('div');
+            handle.classList.add('resize-handle');
+            container.appendChild(handle);
+            workspace.appendChild(container);
+
+            container.addEventListener('mousedown', handleSelection);
+            container.addEventListener('touchstart', handleSelection, {passive: false});
+            handle.addEventListener('mousedown', startResize);
+            handle.addEventListener('touchstart', startResize, {passive: false});
+        }
+
+        // --- Interaction Logic ---
+        workspaceContainer.addEventListener('mousedown', (e) => {
+           if (e.target === workspaceContainer) deselectAll();
+        });
+
+        function deselectAll() {
+             if (selectedElement) selectedElement.classList.remove('active');
+             selectedElement = null;
+             contextMenu.style.display = 'none';
+        }
+
+        function handleSelection(e) {
+            if (e.target.classList.contains('resize-handle')) return;
+            e.preventDefault();
+            
+            if (selectedElement) selectedElement.classList.remove('active');
+            selectedElement = this;
+            selectedElement.classList.add('active');
+            
+            updateContextMenu();
+
+            if (selectedElement.classList.contains('locked')) return;
+
+            let startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            let startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            let rect = selectedElement.getBoundingClientRect();
+            let offsetX = startX - rect.left;
+            let offsetY = startY - rect.top;
+
+            function moveAt(px, py) {
+                let workRect = workspace.getBoundingClientRect();
+                selectedElement.style.left = (px - workRect.left - offsetX) + 'px';
+                selectedElement.style.top = (py - workRect.top - offsetY) + 'px';
+                updateContextMenu();
+            }
+
+            function onMove(ev) {
+                let px = ev.type.includes('mouse') ? ev.clientX : ev.touches[0].clientX;
+                let py = ev.type.includes('mouse') ? ev.clientY : ev.touches[0].clientY;
+                moveAt(px, py);
+            }
+
+            function onUp() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchend', onUp);
+                updateDataState(selectedElement);
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('touchmove', onMove, {passive: false});
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchend', onUp);
+        }
+
+        function startResize(e) {
+            e.stopPropagation(); e.preventDefault();
+            const container = this.parentElement;
+            if (container.classList.contains('locked')) return;
+
+            const startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            const isText = container.querySelector('span') !== null;
+            
+            const startW = container.getBoundingClientRect().width;
+            const ratio = parseFloat(container.dataset.ratio) || 1;
+            const startFontSize = isText ? parseFloat(container.querySelector('span').style.fontSize) : 0;
+
+            function doResize(ev) {
+                let px = ev.type.includes('mouse') ? ev.clientX : ev.touches[0].clientX;
+                const diff = px - startX;
+                
+                if (isText) {
+                    const newFS = Math.max(10, startFontSize + (diff / 2));
+                    container.querySelector('span').style.fontSize = newFS + 'px';
+                } else {
+                    const newW = Math.max(30, startW + diff);
+                    container.style.width = newW + 'px';
+                    container.style.height = (newW / ratio) + 'px';
+                }
+                updateContextMenu();
+            }
+
+            function stopResize() {
+                document.removeEventListener('mousemove', doResize);
+                document.removeEventListener('touchmove', doResize);
+                document.removeEventListener('mouseup', stopResize);
+                document.removeEventListener('touchend', stopResize);
+                updateDataState(container);
+            }
+
+            document.addEventListener('mousemove', doResize);
+            document.addEventListener('touchmove', doResize, {passive: false});
+            document.addEventListener('mouseup', stopResize);
+            document.addEventListener('touchend', stopResize);
+        }
+
+        // --- Context Menu & Logic (UPDATED) ---
+        function updateContextMenu() {
+            if (!selectedElement) { contextMenu.style.display = 'none'; return; }
+            const rect = selectedElement.getBoundingClientRect();
+            contextMenu.style.display = 'flex';
+            // Position slightly above the element
+            contextMenu.style.top = (rect.top - 50) + 'px';
+            contextMenu.style.left = rect.left + 'px';
+            
+            const isLocked = selectedElement.classList.contains('locked');
+            document.getElementById('lockBtn').innerText = isLocked ? "🔓 Unlock" : "🔒 Lock";
+        }
+
+        function toggleLock() {
+            if(!selectedElement) return;
+            selectedElement.classList.toggle('locked');
+            updateDataState(selectedElement);
+            updateContextMenu();
+        }
+
+        function deleteSelected() {
+            if(!selectedElement) return;
+            elementsData = elementsData.filter(el => el.id !== selectedElement.id);
+            selectedElement.remove();
+            selectedElement = null;
+            contextMenu.style.display = 'none';
+        }
+
+        function changeLayer(dir) {
+            if(!selectedElement) return;
+            let z = parseInt(selectedElement.style.zIndex);
+            if(dir === 'up') z++;
+            if(dir === 'down') z--;
+            selectedElement.style.zIndex = z;
+            updateDataState(selectedElement);
+        }
+
+        function updateDataState(el) {
+            const idx = elementsData.findIndex(i => i.id === el.id);
+            if (idx > -1) {
+                const item = elementsData[idx];
+                item.x = parseFloat(el.style.left);
+                item.y = parseFloat(el.style.top);
+                item.z = parseInt(el.style.zIndex);
+                item.locked = el.classList.contains('locked');
+                
+                if (item.type === 'image') {
+                    item.w = parseFloat(el.style.width);
+                    item.h = parseFloat(el.style.height);
+                } else if (item.type === 'text') {
+                    item.fontSize = parseFloat(el.querySelector('span').style.fontSize);
+                }
+            }
+        }
+                // --- Save / Load Project ---
+        function saveProjectToFile() {
+            const project = {
+                version: "8.0",
+                elements: elementsData,
+                bg1: bgCol1.value,
+                bg2: bgCol2.value,
+                grad: gradientCheck.checked,
+                trans: transparentCheck.checked,
+                ratio: document.getElementById('ratioSelect').value
+            };
+            const blob = new Blob([JSON.stringify(project)], {type: "application/json"});
+            const link = document.createElement('a');
+            link.download = "VIG_Project_v8.vig";
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        }
+
+        function loadProjectFromFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    workspace.innerHTML = '';
+                    elementsData = [];
+                    
+                    // Restore BG
+                    bgCol1.value = data.bg1 || '#ffffff';
+                    bgCol2.value = data.bg2 || '#ffffff';
+                    gradientCheck.checked = data.grad;
+                    transparentCheck.checked = data.trans;
+                    if(data.ratio) {
+                        document.getElementById('ratioSelect').value = data.ratio;
+                        setAspectRatio(data.ratio);
+                    }
+                    updateBackground();
+
+                    // Restore Elements
+                    if (data.elements) {
+                        elementsData = data.elements;
+                        elementsData.forEach(el => renderElement(el));
+                    }
+                } catch(err) { alert("File corrupted!"); }
+            }
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        // --- HD Download Logic ---
+        function downloadHDCollage() {
+            if (elementsData.length === 0) return alert("Canvas empty!");
+            deselectAll();
+            const loading = document.getElementById('loading');
+            loading.style.display = 'flex';
+
+            setTimeout(() => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const scale = 3; // 3x HD
+                
+                canvas.width = workspace.clientWidth * scale;
+                canvas.height = workspace.clientHeight * scale;
+                ctx.scale(scale, scale);
+
+                // 1. Draw Background
+                if (!transparentCheck.checked) {
+                    if (gradientCheck.checked) {
+                        const grad = ctx.createLinearGradient(0, 0, workspace.clientWidth, workspace.clientHeight);
+                        grad.addColorStop(0, bgCol1.value);
+                        grad.addColorStop(1, bgCol2.value);
+                        ctx.fillStyle = grad;
+                    } else {
+                        ctx.fillStyle = bgCol1.value;
+                    }
+                    ctx.fillRect(0, 0, workspace.clientWidth, workspace.clientHeight);
+                }
+
+                // 2. Draw Elements (Sorted by Z)
+                const sorted = [...elementsData].sort((a, b) => a.z - b.z);
+
+                const drawQueue = sorted.map(el => {
+                    return new Promise((resolve) => {
+                        if (el.type === 'image') {
+                            const img = new Image();
+                            img.src = el.src;
+                            img.onload = () => {
+                                ctx.drawImage(img, el.x, el.y, el.w, el.h);
+                                resolve();
+                            };
+                            img.onerror = resolve; 
+                        } else if (el.type === 'text') {
+                            ctx.font = `${el.fontSize}px ${el.font}`;
+                            ctx.fillStyle = el.color;
+                            ctx.textBaseline = 'top';
+                            ctx.fillText(el.text, el.x, el.y); 
+                            resolve();
+                        }
+                    });
+                });
+
+                Promise.all(drawQueue).then(() => {
+                    const link = document.createElement('a');
+                    link.download = `VIG-TECH_v8_${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    loading.style.display = 'none';
+                });
+
+            }, 100);
+        }
+    </script>
+</body>
+</html>
